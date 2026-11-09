@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas Tata Surya</title>
+<meta name="description" content="Atlas sinematik tata surya: delapan planet mengelilingi satu bintang.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --abyss:#05070d;
+  --panel:rgba(6,9,17,.82);
+  --parchment:#f2efe6;
+  --slate:#9aa3b4;
+  --brass:#e8b054;
+  --brass-dim:rgba(232,176,84,.22);
+  --hairline:rgba(242,239,230,.14);
+  --bar:78px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--abyss);
+  color:var(--parchment);
+  font-family:"Hanken Grotesk",sans-serif;
+  font-size:15px;
+  line-height:1.55;
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block}
+
+#grain{position:fixed;inset:0;z-index:4;pointer-events:none;background-repeat:repeat;opacity:.35}
+#vignette{position:fixed;inset:0;z-index:5;pointer-events:none;
+  background:radial-gradient(ellipse 120% 90% at 50% 42%, transparent 52%, rgba(2,3,7,.55) 100%)}
+
+.hud{position:fixed;z-index:20;pointer-events:none;opacity:0;transition:opacity 1s .5s}
+body.live .hud{opacity:1}
+.hud .tappable{pointer-events:auto}
+button{
+  font:inherit;
+  color:var(--parchment);
+  background:transparent;
+  border:1px solid var(--hairline);
+  border-radius:3px;
+  padding:8px 14px;
+  cursor:pointer;
+  transition:border-color .2s,background-color .2s,color .2s;
+}
+button:hover{border-color:var(--brass)}
+button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+button[aria-pressed="true"]{background:var(--brass);color:var(--abyss);border-color:var(--brass)}
+
+.bar{position:fixed;left:0;right:0;z-index:14;height:var(--bar);background:#000;transition:transform 1s cubic-bezier(.6,0,.3,1)}
+.bar.top{top:0;box-shadow:0 1px 0 rgba(242,239,230,.08)}
+.bar.bottom{bottom:0;box-shadow:0 -1px 0 rgba(242,239,230,.08)}
+body:not(.live) .bar.top{transform:translateY(-100%)}
+body:not(.live) .bar.bottom{transform:translateY(100%)}
+
+.brand{top:0;left:0;height:var(--bar);display:flex;align-items:center;padding:0 30px}
+.brand h1{
+  font-family:"Instrument Serif",serif;
+  font-weight:400;
+  font-size:clamp(22px,2.3vw,30px);
+  line-height:1;
+  letter-spacing:.015em;
+}
+
+.ops{top:0;right:0;height:var(--bar);display:flex;align-items:center;gap:8px;padding:0 26px}
+.ops .lab{color:var(--slate);font-size:13px;margin-right:2px}
+.ops button{padding:7px 12px;font-size:13px}
+
+.strip{left:0;right:0;bottom:0;height:var(--bar);display:flex;align-items:center;justify-content:center;max-width:100vw}
+.strip .tappable{display:flex;gap:12px;align-items:center;padding:0 14px}
+.strip button{white-space:nowrap;font-size:14px;min-height:40px;display:flex;align-items:center;gap:9px}
+.strip .dot{width:9px;height:9px;border-radius:50%;flex:none}
+
+.sheet{
+  position:fixed;
+  top:calc(var(--bar) + 30px);right:30px;z-index:19;
+  width:348px;max-height:calc(100vh - var(--bar) - var(--bar) - 44px);
+  overflow-y:auto;
+  background:var(--panel);
+  backdrop-filter:blur(8px);
+  border:1px solid var(--brass-dim);
+  border-radius:4px;
+  padding:24px 24px 18px;
+  opacity:0;transform:translateY(10px);
+  visibility:hidden;
+  transition:opacity .35s,transform .35s,visibility .35s;
+}
+.sheet.open{opacity:1;transform:none;visibility:visible}
+.sheet header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.sheet h2{
+  font-family:"Instrument Serif",serif;
+  font-style:italic;
+  font-weight:400;
+  font-size:34px;line-height:1.1;
+}
+.sheet .kind{color:var(--slate);font-size:13px;margin-top:4px}
+.sheet .desc{margin-top:14px}
+.sheet table{width:100%;border-collapse:collapse;margin-top:16px}
+.sheet td{padding:9px 0;border-bottom:1px solid var(--hairline);vertical-align:top}
+.sheet tr:last-child td{border-bottom:none}
+.sheet td.k{color:var(--slate);width:42%;font-size:13px;padding-right:10px}
+.sheet td.v{color:var(--parchment);font-size:14px}
+.sheet .note{margin-top:16px;padding-top:14px;border-top:1px solid var(--brass-dim);color:#e3c98f;font-size:14px}
+.sheet .close{padding:6px 12px;font-size:13px}
+
+.ret{
+  position:fixed;width:20px;height:20px;z-index:15;pointer-events:none;
+  opacity:0;transition:opacity 1.2s ease .4s;
+}
+body.live .ret{opacity:1}
+.ret.tl{top:14px;left:14px;border-top:1px solid var(--brass);border-left:1px solid var(--brass)}
+.ret.tr{top:14px;right:14px;border-top:1px solid var(--brass);border-right:1px solid var(--brass)}
+.ret.bl{bottom:74px;left:14px;border-bottom:1px solid var(--brass);border-left:1px solid var(--brass)}
+.ret.br{bottom:74px;right:14px;border-bottom:1px solid var(--brass);border-right:1px solid var(--brass)}
+
+.cta{
+  display:inline-block;margin-top:16px;padding:9px 14px;
+  border:1px solid var(--brass);border-radius:3px;
+  color:var(--brass);text-decoration:none;font-size:13px;
+  transition:background-color .2s,color .2s;
+}
+a.cta:hover{background:var(--brass);color:var(--abyss)}
+a.cta:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+.csvg{position:absolute;width:150px;height:96px;opacity:.45}
+.csvg path{fill:none;stroke:var(--brass);stroke-width:1.1}
+.csvg circle{fill:var(--brass)}
+.csvg-a{top:16%;left:12%}
+.csvg-b{bottom:16%;right:11%}
+
+.tag{
+  position:fixed;z-index:21;pointer-events:none;
+  transform:translate(14px,-50%);
+  background:var(--panel);
+  border:1px solid var(--brass-dim);
+  border-radius:3px;
+  padding:4px 10px;
+  font-size:13px;
+  opacity:0;transition:opacity .15s;
+}
+.tag.show{opacity:1}
+
+#card{
+  position:fixed;inset:0;z-index:30;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:var(--abyss);
+  text-align:center;padding:0 24px;
+}
+#card h2{
+  font-family:"Instrument Serif",serif;
+  font-style:italic;
+  font-weight:400;
+  font-size:clamp(46px,9vw,110px);
+  line-height:1.05;
+  letter-spacing:.01em;
+}
+#card .logline{margin-top:14px;color:var(--slate);font-size:15px}
+#card .msg{position:absolute;bottom:26px;color:var(--slate);font-size:13px}
+#card{opacity:1;transition:opacity 1.4s ease,visibility 1.4s}
+#card.out{opacity:0;visibility:hidden}
+
+@media (max-width:720px){
+  :root{--bar:56px}
+  .brand{padding:0 18px}
+  .brand h1{font-size:22px}
+  .ops{top:var(--bar);height:auto;padding:8px 12px;justify-content:flex-end;gap:6px}
+  .ops .lab{display:none}
+  .ops button{padding:10px 9px;min-height:44px;font-size:13px}
+  .strip{justify-content:flex-start;overflow-x:auto;padding:0 12px;scrollbar-width:none}
+  .strip::-webkit-scrollbar{display:none}
+  .strip button{min-height:44px}
+  .sheet{
+    top:auto;left:0;right:0;
+    bottom:calc(var(--bar) + 10px);
+    width:auto;max-height:44vh;
+    border-radius:8px 8px 0 0;
+    border-left:none;border-right:none;
+  }
+}
+@media (max-width:940px){
+  .strip{justify-content:flex-start;overflow-x:auto;padding:0 14px;scrollbar-width:none}
+  .strip::-webkit-scrollbar{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition-duration:.01ms !important;animation-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<div id="stage" aria-hidden="true"></div>
+<div id="grain" aria-hidden="true"></div>
+<div id="vignette" aria-hidden="true"></div>
+
+<div class="bar top"></div>
+<div class="bar bottom"></div>
+
+<span class="ret tl" aria-hidden="true"></span>
+<span class="ret tr" aria-hidden="true"></span>
+<span class="ret bl" aria-hidden="true"></span>
+<span class="ret br" aria-hidden="true"></span>
+
+<header class="brand hud">
+  <div class="tappable"><h1>Atlas Tata Surya</h1></div>
+</header>
+
+<div class="ops hud" role="group" aria-label="Kecepatan waktu">
+  <span class="lab tappable">Kecepatan</span>
+  <button class="tappable" data-speed="0" aria-pressed="false">Jeda</button>
+  <button class="tappable" data-speed="1" aria-pressed="true">1×</button>
+  <button class="tappable" data-speed="4" aria-pressed="false">4×</button>
+  <button class="tappable" data-speed="12" aria-pressed="false">12×</button>
+  <button class="tappable" id="homeview">Tampilan awal</button>
+</div>
+
+<nav class="strip hud" aria-label="Pilih objek langit">
+  <div class="tappable" id="strip"></div>
+</nav>
+
+<aside class="sheet" id="sheet" aria-live="polite">
+  <header>
+    <div>
+      <h2 id="sheet-name"></h2>
+      <div class="kind" id="sheet-kind"></div>
+    </div>
+    <button class="close" id="sheet-close">Tutup</button>
+  </header>
+  <p class="desc" id="sheet-desc"></p>
+  <table><tbody id="sheet-rows"></tbody></table>
+  <p class="note" id="sheet-note"></p>
+  <a class="cta" id="sheet-cta" href="planet.html">Buka halaman lengkap</a>
+</aside>
+
+<div class="tag" id="tag"></div>
+
+<div id="card">
+  <svg class="csvg csvg-a" viewBox="0 0 150 96" aria-hidden="true">
+    <path d="M10 78 L42 58 L70 64 L100 34 L138 42"/>
+    <circle cx="10" cy="78" r="2"/><circle cx="42" cy="58" r="2.4"/><circle cx="70" cy="64" r="2"/>
+    <circle cx="100" cy="34" r="2.6"/><circle cx="138" cy="42" r="2"/>
+  </svg>
+  <svg class="csvg csvg-b" viewBox="0 0 150 96" aria-hidden="true">
+    <path d="M12 40 L48 30 L76 52 L108 62 L140 58"/>
+    <circle cx="12" cy="40" r="2"/><circle cx="48" cy="30" r="2.4"/><circle cx="76" cy="52" r="2.6"/>
+    <circle cx="108" cy="62" r="2"/><circle cx="140" cy="58" r="2"/>
+  </svg>
+  <h2>Atlas Tata Surya</h2>
+  <p class="logline">Delapan planet. Satu bintang.</p>
+  <p class="msg" id="card-msg">memuat tata surya…</p>
+</div>
+
+<script>
+addEventListener('error', e => {
+  const card = document.getElementById('card');
+  if (card && !card.classList.contains('out') && e.target.tagName === 'SCRIPT'){
+    document.getElementById('card-msg').textContent = 'Gagal memuat three.js. Periksa koneksi internet lalu muat ulang halaman.';
+  }
+}, true);
+</script>
+<script src="bodies.js"></script>
+<script type="importmap">
+{"imports":{
+  "three":"https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function ctex(c){
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const BODIES = ATLAS.BODIES;
+const TEXMAP = {};
+BODIES.forEach(b => { TEXMAP[b.id] = ctex(ATLAS.PAINT[b.id]()); });
+const ringTex = () => ctex(ATLAS.ringCanvas());
+const glowTex = () => ctex(ATLAS.glowCanvas());
+
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070d);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, .1, 3000);
+camera.position.set(0, 9, 34);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = .06;
+controls.minDistance = 7;
+controls.maxDistance = 340;
+controls.target.set(0, 0, 0);
+controls.autoRotateSpeed = .12;
+
+scene.add(new THREE.AmbientLight(0xbfd0e8, .32));
+const sunLight = new THREE.PointLight(0xffe0b0, 2.8, 0, 0);
+scene.add(sunLight);
+
+function rng(seed){
+  return () => {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function starField(count, radius, size, hue){
+  const pos = new Float32Array(count * 3);
+  const r = rng(radius + count);
+  for (let i = 0; i < count; i++){
+    const th = r() * Math.PI * 2, ph = Math.acos(2 * r() - 1), d = radius * (.7 + r() * .5);
+    pos[i * 3] = d * Math.sin(ph) * Math.cos(th);
+    pos[i * 3 + 1] = d * Math.cos(ph);
+    pos[i * 3 + 2] = d * Math.sin(ph) * Math.sin(th);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  return new THREE.Points(g, new THREE.PointsMaterial({ size, color: hue, transparent: true, opacity: .9, sizeAttenuation: true }));
+}
+scene.add(starField(2400, 900, 3.2, 0xdfe6f2));
+scene.add(starField(160, 900, 7.5, 0xd9c290));
+
+const pickables = [];
+const pivots = new Map();
+const byId = new Map(BODIES.map(b => [b.id, b]));
+
+function makeSun(){
+  const p = new THREE.Object3D();
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(6, 48, 32), new THREE.MeshBasicMaterial({ map: TEXMAP.matahari }));
+  mesh.userData.id = 'matahari';
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  glow.scale.setScalar(36);
+  p.add(mesh, glow);
+  scene.add(p);
+  pickables.push(mesh);
+  pivots.set('matahari', p);
+}
+
+function makePlanet(b, idx){
+  const pivot = new THREE.Object3D();
+  const tiltG = new THREE.Object3D();
+  tiltG.rotation.z = THREE.MathUtils.degToRad(b.tilt);
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(b.size, 42, 28),
+    new THREE.MeshStandardMaterial({ map: TEXMAP[b.id], roughness: 1, metalness: 0 })
+  );
+  mesh.userData.id = b.id;
+  tiltG.add(mesh);
+
+  if (b.hasRing){
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(b.size * 1.45, b.size * 2.35, 128, 1),
+      new THREE.MeshBasicMaterial({ map: ringTex(), transparent: true, side: THREE.DoubleSide, depthWrite: false })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    tiltG.add(ring);
+  }
+  pivot.add(tiltG);
+
+  if (b.hasMoon){
+    const mp = new THREE.Object3D();
+    const moon = new THREE.Mesh(
+      new THREE.SphereGeometry(.4, 24, 16),
+      new THREE.MeshStandardMaterial({ color: 0xb8b4ac, roughness: 1 })
+    );
+    moon.position.x = 2.8;
+    mp.add(moon);
+    pivot.add(mp);
+    b._moonPivot = mp;
+  }
+
+  const seg = 160, pts = [];
+  for (let i = 0; i <= seg; i++){
+    const a = (i / seg) * Math.PI * 2;
+    pts.push(new THREE.Vector3(Math.cos(a) * b.dist, 0, Math.sin(a) * b.dist));
+  }
+  const orbit = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({ color: 0x8fa0bd, transparent: true, opacity: .18 })
+  );
+  scene.add(orbit);
+
+  b._angle = (idx * 137.5 % 360) * Math.PI / 180;
+  pivot.position.set(Math.cos(b._angle) * b.dist, 0, Math.sin(b._angle) * b.dist);
+  scene.add(pivot);
+  pickables.push(mesh);
+  pivots.set(b.id, pivot);
+}
+
+makeSun();
+BODIES.filter(b => b.dist > 0).forEach((b, i) => makePlanet(b, i));
+
+const tag = document.getElementById('tag');
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let downPos = null;
+
+function pickAt(e){
+  pointer.x = (e.clientX / innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects(pickables, false)[0];
+  return hit ? hit.object.userData.id : null;
+}
+renderer.domElement.addEventListener('pointermove', e => {
+  const id = pickAt(e);
+  renderer.domElement.style.cursor = id ? 'pointer' : 'grab';
+  if (id){
+    tag.textContent = byId.get(id).name;
+    tag.style.left = e.clientX + 'px';
+    tag.style.top = e.clientY + 'px';
+    tag.classList.add('show');
+  } else tag.classList.remove('show');
+});
+renderer.domElement.addEventListener('pointerdown', e => { downPos = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!downPos) return;
+  const moved = Math.hypot(e.clientX - downPos[0], e.clientY - downPos[1]);
+  downPos = null;
+  if (moved < 6){
+    const id = pickAt(e);
+    if (id) select(id, true);
+  }
+});
+
+let speed = reduced ? 0 : 1;
+let focusId = null;
+let tween = null;
+let introDone = false;
+let idleTime = 0;
+const lastFocusPos = new THREE.Vector3();
+const HOME = { cam: new THREE.Vector3(0, 34, 98), tgt: new THREE.Vector3(0, 0, 0) };
+const INTRO = { cam: new THREE.Vector3(0, 9, 34), tgt: new THREE.Vector3(0, 0, 0) };
+const sheet = document.getElementById('sheet');
+const strip = document.getElementById('strip');
+const tmpV = new THREE.Vector3();
+
+function buildStrip(){
+  BODIES.forEach(b => {
+    const btn = document.createElement('button');
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = b.dot;
+    btn.append(dot, document.createTextNode(b.name));
+    btn.dataset.id = b.id;
+    btn.addEventListener('click', () => select(b.id, false));
+    strip.appendChild(btn);
+  });
+}
+function syncStrip(){
+  strip.querySelectorAll('button').forEach(btn => {
+    const on = btn.dataset.id === focusId;
+    btn.setAttribute('aria-pressed', String(on));
+  });
+}
+
+function renderSheet(b){
+  document.getElementById('sheet-name').textContent = b.name;
+  document.getElementById('sheet-kind').textContent = b.kind;
+  document.getElementById('sheet-desc').textContent = b.desc;
+  document.getElementById('sheet-rows').innerHTML = b.rows.map(r => `<tr><td class="k">${r[0]}</td><td class="v">${r[1]}</td></tr>`).join('');
+  document.getElementById('sheet-cta').href = `planet.html?id=${b.id}`;
+  const n = document.getElementById('sheet-note');
+  n.textContent = b.note;
+  n.style.display = b.note ? '' : 'none';
+}
+
+function offsetFor(b){
+  return new THREE.Vector3(.62, .45, 1).normalize().multiplyScalar(Math.max(b.size * 7.5, 9));
+}
+
+function flyTo(id){
+  focusId = id;
+  syncStrip();
+  controls.enabled = false;
+  tag.classList.remove('show');
+  if (id){
+    renderSheet(byId.get(id));
+    sheet.classList.add('open');
+  } else {
+    sheet.classList.remove('open');
+  }
+  tween = { t: 0, dur: reduced ? .01 : 1.5, fromCam: camera.position.clone(), fromTgt: controls.target.clone(), id };
+  if (id) pivots.get(id).getWorldPosition(lastFocusPos);
+}
+
+function select(id, fromScene){
+  if (focusId === id) return;
+  flyTo(id);
+  if (fromScene) strip.querySelector(`[data-id="${id}"]`)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', inline: 'nearest', block: 'nearest' });
+}
+
+buildStrip();
+document.getElementById('sheet-close').addEventListener('click', () => flyTo(null));
+document.getElementById('homeview').addEventListener('click', () => flyTo(null));
+addEventListener('keydown', e => { if (e.key === 'Escape' && focusId) flyTo(null); });
+
+const speedBtns = document.querySelectorAll('[data-speed]');
+speedBtns.forEach(btn => btn.addEventListener('click', () => {
+  speed = Number(btn.dataset.speed);
+  speedBtns.forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+}));
+
+['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(evName =>
+  addEventListener(evName, () => { idleTime = 0; }, { passive: true })
+);
+
+function ease(t){ return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+const clock = new THREE.Clock();
+let firstFrame = true;
+
+const grainEl = document.getElementById('grain');
+if (!reduced){
+  const c = document.createElement('canvas'); c.width = c.height = 160;
+  const x = c.getContext('2d');
+  const frames = [];
+  for (let f = 0; f < 6; f++){
+    const d = x.createImageData(160, 160);
+    for (let i = 0; i < d.data.length; i += 4){
+      const v = Math.random() * 255 | 0;
+      d.data[i] = d.data[i + 1] = d.data[i + 2] = v;
+      d.data[i + 3] = 26;
+    }
+    x.putImageData(d, 0, 0);
+    frames.push(c.toDataURL());
+  }
+  let gi = 0;
+  setInterval(() => { grainEl.style.backgroundImage = `url(${frames[++gi % 6]})`; }, 160);
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), .1);
+
+  for (const b of BODIES){
+    if (b.dist > 0 && speed > 0){
+      b._angle += dt * speed * (Math.PI * 2) / (b.period * 30);
+      const p = pivots.get(b.id);
+      p.position.set(Math.cos(b._angle) * b.dist, 0, Math.sin(b._angle) * b.dist);
+    }
+  }
+
+  const sunSpin = pivots.get('matahari').children[0];
+  sunSpin.rotation.y += dt * speed * .35;
+  for (const b of BODIES){
+    if (!b.dist) continue;
+    const tiltG = pivots.get(b.id).children[0];
+    tiltG.children[0].rotation.y += dt * speed * b.spin * 2;
+    if (b._moonPivot) b._moonPivot.rotation.y += dt * speed * 2.4;
+  }
+
+  if (tween){
+    tween.t += dt / tween.dur;
+    const k = ease(Math.min(tween.t, 1));
+    let toCam, toTgt;
+    if (tween.id){
+      pivots.get(tween.id).getWorldPosition(tmpV);
+      toTgt = tmpV.clone();
+      toCam = tmpV.clone().add(offsetFor(byId.get(tween.id)));
+      lastFocusPos.copy(tmpV);
+    } else { toCam = HOME.cam; toTgt = HOME.tgt; }
+    camera.position.lerpVectors(tween.fromCam, toCam, k);
+    controls.target.lerpVectors(tween.fromTgt, toTgt, k);
+    if (tween.t >= 1){ tween = null; controls.enabled = true; }
+  } else if (focusId && introDone){
+    pivots.get(focusId).getWorldPosition(tmpV);
+    camera.position.add(tmpV.clone().sub(lastFocusPos));
+    controls.target.copy(tmpV);
+    lastFocusPos.copy(tmpV);
+  }
+
+  idleTime += dt;
+  controls.autoRotate = introDone && !focusId && !tween && !reduced && idleTime > 12;
+  controls.update();
+  renderer.render(scene, camera);
+
+  if (firstFrame){
+    firstFrame = false;
+    const msg = document.getElementById('card-msg');
+    msg.textContent = '';
+    document.body.classList.add('live');
+    if (reduced){
+      camera.position.copy(HOME.cam);
+      introDone = true;
+      setTimeout(() => document.getElementById('card').classList.add('out'), 300);
+    } else {
+      tween = { t: 0, dur: 5.5, fromCam: INTRO.cam.clone(), fromTgt: INTRO.tgt.clone(), id: null };
+      camera.position.copy(INTRO.cam);
+      setTimeout(() => document.getElementById('card').classList.add('out'), 1400);
+    }
+  }
+  if (!introDone && !tween) introDone = true;
+}
+animate();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>

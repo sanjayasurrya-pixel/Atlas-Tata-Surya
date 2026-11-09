@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas Tata Surya</title>
+<meta name="description" content="Halaman lengkap objek tata surya dengan model tiga dimensi.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --abyss:#05070d;
+  --parchment:#f2efe6;
+  --slate:#9aa3b4;
+  --brass:#e8b054;
+  --brass-dim:rgba(232,176,84,.22);
+  --hairline:rgba(242,239,230,.14);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--abyss);
+  color:var(--parchment);
+  font-family:"Hanken Grotesk",sans-serif;
+  font-size:15px;
+  line-height:1.6;
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+#grain{position:fixed;inset:0;z-index:4;pointer-events:none;background-repeat:repeat;opacity:.35}
+#vignette{position:fixed;inset:0;z-index:5;pointer-events:none;
+  background:radial-gradient(ellipse 120% 90% at 40% 48%, transparent 50%, rgba(2,3,7,.5) 100%)}
+
+.bar{position:fixed;top:0;left:0;right:0;z-index:14;height:56px;background:#000;
+  box-shadow:0 1px 0 rgba(242,239,230,.08);
+  display:flex;align-items:center;justify-content:space-between;padding:0 24px}
+.bar a{
+  font:inherit;color:var(--parchment);background:transparent;
+  border:1px solid var(--hairline);border-radius:3px;padding:8px 14px;
+  cursor:pointer;text-decoration:none;font-size:13px;
+  transition:border-color .2s,color .2s;
+}
+.bar a:hover{border-color:var(--brass)}
+.bar a:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.bar .brand{font-family:"Instrument Serif",serif;font-size:19px;color:var(--slate)}
+
+#modelwrap{position:fixed;top:56px;left:0;bottom:0;width:54%}
+#modelwrap canvas{display:block}
+.modelhint{
+  position:absolute;bottom:18px;left:24px;z-index:6;
+  color:var(--slate);font-size:13px;
+  pointer-events:none;user-select:none;
+}
+
+.content{
+  position:fixed;top:56px;bottom:0;right:0;width:46%;
+  overflow-y:auto;padding:52px 60px 64px 40px;
+  scrollbar-width:thin;
+}
+.kicker{color:var(--slate);font-size:14px}
+.content h1{
+  font-family:"Instrument Serif",serif;
+  font-style:italic;font-weight:400;
+  font-size:clamp(44px,4.6vw,68px);
+  line-height:1.02;
+  margin-top:6px;
+}
+.lead{margin-top:18px;font-size:17px;max-width:52ch}
+.long{margin-top:2px;max-width:60ch}
+.long p{margin-top:14px;color:rgba(242,239,230,.88)}
+
+table{width:100%;border-collapse:collapse;margin-top:28px;max-width:60ch}
+td{padding:9px 0;border-bottom:1px solid var(--hairline);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.k{color:var(--slate);width:44%;font-size:13px;padding-right:12px}
+td.v{font-size:14px}
+
+.dnote{margin-top:22px;padding-top:16px;border-top:1px solid var(--brass-dim);
+  color:#e3c98f;font-size:14px;max-width:56ch}
+
+.orbitbox{margin-top:34px;max-width:380px}
+.orbitbox svg{display:block;width:100%;height:auto}
+.orbitbox .cap{margin-top:6px;color:var(--slate);font-size:13px}
+
+.pn{display:flex;justify-content:space-between;gap:16px;margin-top:40px;padding-top:20px;
+  border-top:1px solid var(--hairline)}
+.pn a{color:var(--brass);text-decoration:none;font-size:14px}
+.pn a:hover{text-decoration:underline}
+.pn a:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.pn a.prev{text-align:left}
+.pn a.next{text-align:right}
+
+#empty{display:none;position:fixed;inset:0;z-index:20;background:var(--abyss);
+  align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;padding:24px}
+#empty.show{display:flex}
+#empty p{color:var(--slate)}
+#empty a{color:var(--brass)}
+
+@media (max-width:860px){
+  #modelwrap{width:100%;bottom:auto;height:44vh}
+  .modelhint{bottom:12px;left:16px}
+  .content{top:calc(56px + 44vh);left:0;width:100%;padding:30px 22px 64px}
+  .content h1{font-size:40px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition-duration:.01ms !important;animation-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<div id="modelwrap" aria-hidden="true">
+  <div class="modelhint">Seret model untuk memutar, cubit untuk memperbesar.</div>
+</div>
+<div id="grain" aria-hidden="true"></div>
+<div id="vignette" aria-hidden="true"></div>
+
+<div class="bar">
+  <a href="index.html">Kembali ke atlas</a>
+  <span class="brand">Atlas Tata Surya</span>
+</div>
+
+<article class="content" id="content">
+  <div class="kicker" id="k-kind"></div>
+  <h1 id="k-name"></h1>
+  <p class="lead" id="k-desc"></p>
+  <div class="long" id="k-long"></div>
+  <table><tbody id="k-rows"></tbody></table>
+  <p class="dnote" id="k-note"></p>
+  <div class="orbitbox">
+    <svg id="orbitsvg" viewBox="0 0 320 168" role="img" aria-label="Skema posisi orbit"></svg>
+    <div class="cap">Skema orbit, jarak tidak berskala.</div>
+  </div>
+  <nav class="pn" id="pn" aria-label="Objek sebelum dan sesudah"></nav>
+</article>
+
+<div id="empty">
+  <p id="empty-msg">Objek tidak dikenal.</p>
+  <a href="index.html">Kembali ke atlas</a>
+</div>
+
+<script>
+addEventListener('error', e => {
+  if (!document.body.classList.contains('ready') && e.target.tagName === 'SCRIPT'){
+    document.getElementById('empty').classList.add('show');
+    document.getElementById('empty-msg').textContent = 'Gagal memuat three.js. Periksa koneksi internet lalu muat ulang halaman.';
+  }
+}, true);
+</script>
+<script src="bodies.js"></script>
+<script type="importmap">
+{"imports":{
+  "three":"https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const params = new URLSearchParams(location.search);
+const id = params.get('id');
+const body = ATLAS.BODIES.find(b => b.id === id);
+
+if (!body){
+  document.getElementById('empty').classList.add('show');
+  document.getElementById('empty-msg').textContent = 'Objek tidak dikenal. Pilih salah satu objek di atlas.';
+} else {
+  document.body.classList.add('ready');
+  document.title = body.name + ' | Atlas Tata Surya';
+  document.getElementById('k-kind').textContent = body.kind;
+  document.getElementById('k-name').textContent = body.name;
+  document.getElementById('k-desc').textContent = body.desc;
+  document.getElementById('k-long').innerHTML = body.long.map(p => `<p>${p}</p>`).join('');
+  document.getElementById('k-rows').innerHTML = body.details.map(r => `<tr><td class="k">${r[0]}</td><td class="v">${r[1]}</td></tr>`).join('');
+  document.getElementById('k-note').textContent = body.dnote;
+
+  const idx = ATLAS.BODIES.indexOf(body);
+  const prev = idx > 0 ? ATLAS.BODIES[idx - 1] : null;
+  const next = idx < ATLAS.BODIES.length - 1 ? ATLAS.BODIES[idx + 1] : null;
+  document.getElementById('pn').innerHTML =
+    (prev ? `<a class="prev" href="planet.html?id=${prev.id}">${prev.name}</a>` : '<span></span>')
+    + (next ? `<a class="next" href="planet.html?id=${next.id}">${next.name}</a>` : '<span></span>');
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.getElementById('orbitsvg');
+  const cx = 160, cy = 84, maxDist = 106;
+  ATLAS.BODIES.forEach(O => {
+    if (O.dist > 0){
+      const rx = 22 + (O.dist / maxDist) * 132, ry = rx * .32;
+      const el = document.createElementNS(NS, 'ellipse');
+      const cur = O === body;
+      el.setAttribute('cx', cx); el.setAttribute('cy', cy);
+      el.setAttribute('rx', rx.toFixed(1)); el.setAttribute('ry', ry.toFixed(1));
+      el.setAttribute('fill', 'none');
+      el.setAttribute('stroke', cur ? '#e8b054' : '#9aa3b4');
+      el.setAttribute('stroke-width', cur ? 1.6 : 1);
+      el.setAttribute('stroke-opacity', cur ? .9 : .28);
+      svg.appendChild(el);
+    }
+  });
+  ATLAS.BODIES.forEach(O => {
+    let x, y;
+    if (O.dist > 0){
+      const rx = 22 + (O.dist / maxDist) * 132, ry = rx * .32;
+      const a = (ATLAS.BODIES.indexOf(O) * 137.5 % 360) * Math.PI / 180;
+      x = cx + Math.cos(a) * rx; y = cy - Math.sin(a) * ry;
+    } else { x = cx; y = cy; }
+    const dot = document.createElementNS(NS, 'circle');
+    const cur = O === body;
+    dot.setAttribute('cx', x.toFixed(1)); dot.setAttribute('cy', y.toFixed(1));
+    dot.setAttribute('r', cur ? 3.6 : 1.8);
+    dot.setAttribute('fill', cur ? '#e8b054' : '#9aa3b4');
+    dot.setAttribute('fill-opacity', cur ? 1 : .8);
+    svg.appendChild(dot);
+  });
+
+  const wrap = document.getElementById('modelwrap');
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  wrap.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x05070d);
+
+  const R = Math.max(body.size * 3, 2.8);
+  const camera = new THREE.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, .1, 3000);
+  const camDist = R * (body.hasRing || body.id === 'matahari' ? 6.2 : 4.4);
+  camera.position.set(R * .95, R * .62, camDist).normalize().multiplyScalar(camDist);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = .06;
+  controls.minDistance = R * 1.7;
+  controls.maxDistance = R * 12;
+  controls.autoRotate = !reduced;
+  controls.autoRotateSpeed = .3;
+
+  scene.add(new THREE.AmbientLight(0xbfd0e8, .3));
+  if (body.id === 'matahari'){
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: ctex(ATLAS.glowCanvas()), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    glow.scale.setScalar(R * 3.6);
+    scene.add(glow);
+  } else {
+    const key = new THREE.PointLight(0xffe0b0, 2.2, 0, 0);
+    key.position.set(R * 2.6, R * 1.8, R * 2.4);
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(0x86a8d8, 1);
+    rim.position.set(-R * 3, R * 1.2, -R * 2.8);
+    scene.add(rim);
+  }
+
+  function ctex(c){
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+
+  function starField(count, radius, size, hue){
+    const pos = new Float32Array(count * 3);
+    const r = rng(radius + count);
+    for (let i = 0; i < count; i++){
+      const th = r() * Math.PI * 2, ph = Math.acos(2 * r() - 1), d = radius * (.7 + r() * .5);
+      pos[i * 3] = d * Math.sin(ph) * Math.cos(th);
+      pos[i * 3 + 1] = d * Math.cos(ph);
+      pos[i * 3 + 2] = d * Math.sin(ph) * Math.sin(th);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    return new THREE.Points(g, new THREE.PointsMaterial({ size, color: hue, transparent: true, opacity: .9, sizeAttenuation: true }));
+  }
+  function rng(seed){
+    return () => {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  scene.add(starField(2200, 500, 2.6, 0xdfe6f2));
+  scene.add(starField(140, 500, 6, 0xd9c290));
+
+  let moonPivot = null;
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(R, 56, 36),
+    body.id === 'matahari' ? new THREE.MeshBasicMaterial({ map: ctex(ATLAS.PAINT[body.id]()) })
+                           : new THREE.MeshStandardMaterial({ map: ctex(ATLAS.PAINT[body.id]()), roughness: 1, metalness: 0 })
+  );
+  mesh.rotation.z = THREE.MathUtils.degToRad(body.tilt);
+  scene.add(mesh);
+
+  if (body.hasRing){
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(R * 1.45, R * 2.35, 128, 1),
+      new THREE.MeshBasicMaterial({ map: ctex(ATLAS.ringCanvas()), transparent: true, side: THREE.DoubleSide, depthWrite: false })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    scene.add(ring);
+  }
+  if (body.hasMoon){
+    moonPivot = new THREE.Object3D();
+    const moon = new THREE.Mesh(
+      new THREE.SphereGeometry(R * .27, 28, 20),
+      new THREE.MeshStandardMaterial({ color: 0xb8b4ac, roughness: 1 })
+    );
+    moon.position.x = R * 2.3;
+    moonPivot.add(moon);
+    scene.add(moonPivot);
+  }
+
+  const clock = new THREE.Clock();
+  (function animate(){
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), .1);
+    mesh.rotation.y += dt * (reduced ? 0 : .1);
+    if (moonPivot) moonPivot.rotation.y += dt * (reduced ? 0 : .5);
+    controls.update();
+    renderer.render(scene, camera);
+  })();
+
+  addEventListener('resize', () => {
+    camera.aspect = wrap.clientWidth / wrap.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  });
+}
+</script>
+
+</body>
+</html>
